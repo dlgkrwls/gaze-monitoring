@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime outputs
+outputs/
+*.log
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Research artifacts not intended for publication
+*.pth
+*.pt
+*.ckpt
+data/
+datasets/
+checkpoints/
+runs/
+wandb/
