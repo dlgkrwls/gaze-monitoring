@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 import os
 import time
 
@@ -11,14 +10,15 @@ import torch
 from torchvision import transforms
 
 from model import build_base_model
+from gaze_monitoring.utils.checkpoint import load_checkpoint
 
 
 # =========================================================
 # 설정
 # =========================================================
 
-BASE_DIR = Path(__file__).resolve().parent
-WEIGHT_PATH = BASE_DIR / "model_epoch_100.pth"
+BASE_DIR = Path(__file__).resolve().parents[2]
+WEIGHT_PATH = BASE_DIR / "weights" / "model_epoch_100.pth"
 
 CAMERA_INDEX = int(os.getenv("GAZE_CAMERA_INDEX", "0"))
 INPUT_SIZE = 224
@@ -42,49 +42,6 @@ def build_preprocess() -> transforms.Compose:
             ),
         ]
     )
-
-
-# =========================================================
-# 가중치 로드
-# =========================================================
-
-def load_state_dict(
-    weight_path: Path,
-    device: torch.device,
-) -> dict[str, Any]:
-
-    checkpoint = torch.load(
-        weight_path,
-        map_location=device,
-        weights_only=True,
-    )
-
-    state_dict = checkpoint
-
-    # 여러 checkpoint 저장 형식 대응
-    if isinstance(checkpoint, dict):
-        for checkpoint_key in (
-            "state_dict",
-            "model_state_dict",
-            "model",
-        ):
-            if (
-                checkpoint_key in checkpoint
-                and isinstance(checkpoint[checkpoint_key], dict)
-            ):
-                state_dict = checkpoint[checkpoint_key]
-                break
-
-    cleaned_state_dict = {}
-
-    for key, value in state_dict.items():
-        # DataParallel로 학습했을 때 붙는 module. 제거
-        if key.startswith("module."):
-            key = key[len("module.") :]
-
-        cleaned_state_dict[key] = value
-
-    return cleaned_state_dict
 
 
 # =========================================================
@@ -209,7 +166,7 @@ def main() -> None:
         pretrained=False,
     )
 
-    state_dict = load_state_dict(
+    state_dict = load_checkpoint(
         weight_path=WEIGHT_PATH,
         device=device,
     )

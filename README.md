@@ -9,7 +9,7 @@
 
 > The gaze model is part of ongoing, unpublished research. Training data, training code, and benchmark results are intentionally not included at this stage.
 
-![Gaze estimation example](img/gaze_result.jpg)
+![Gaze estimation example](assets/images/gaze_result.jpg)
 
 ## Why this project?
 
@@ -20,6 +20,7 @@
 - 시선각 smoothing과 지속 시간 기반 경고
 - 얼굴 미검출 상태 처리
 - CPU/GPU 자동 선택 및 실시간 FPS 표시
+- PyTorch → ONNX 변환 및 두 런타임 간 출력 검증
 
 활용 가능 분야는 driver monitoring system(DMS), 작업자 안전 모니터링, HCI, attention-aware interface 등입니다.
 
@@ -35,16 +36,29 @@ flowchart LR
     F --> G[Attention state and warning]
 ```
 
+## What's implemented vs. planned
+
+| Area | Status |
+|---|---|
+| PyTorch inference (single image, webcam, manual ROI) | Implemented |
+| Driver-attention monitoring (calibration, EMA smoothing, dwell-time warning) | Implemented |
+| PyTorch → ONNX export | Implemented (tool script, requires a local checkpoint) |
+| PyTorch vs. ONNX Runtime output comparison | Implemented (tool script) |
+| ONNX Runtime single-image / real-time inference | Planned |
+| Saved-video inference | Implemented (`video_pytorch.py`) |
+| Docker (CPU) deployment | Planned — not implemented |
+| C++17 / CMake port | Planned — not implemented |
+
 ## Demo features
 
 | Feature | Description |
 |---|---|
 | Face detection | OpenCV YuNet detector |
 | Gaze estimation | ResNet18 regression head predicting yaw and pitch |
-| Calibration | 30-frame personal forward-gaze baseline |
+| Calibration | 30-frame personal forward-gaze baseline (2-second auto-calibration for saved video) |
 | Attention logic | Angular threshold + dwell time |
 | Stabilization | Bounding-box and gaze EMA smoothing |
-| Runtime | Webcam input, CPU/CUDA auto selection |
+| Runtime | Webcam or saved-video input, CPU/CUDA auto selection |
 
 ## Quick start
 
@@ -73,44 +87,56 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+Using conda instead:
+
+```bash
+conda create -n Gaze_monitoring python=3.10
+conda activate Gaze_monitoring
+pip install -r requirements.txt
+```
+
 ### 2. Prepare model files
 
-The public YuNet face detector is included. The gaze checkpoint is part of ongoing research and is not distributed in this repository. To run gaze inference, place a compatible checkpoint at:
+The public YuNet face detector is included at `models/face_detection_yunet_2023mar.onnx`. The gaze checkpoint is part of ongoing research and is **not** distributed in this repository. To run gaze inference, place a compatible checkpoint at:
 
 ```text
-model_epoch_100.pth
+weights/model_epoch_100.pth
 ```
 
-The expected face-detector path is:
-
-```text
-models/face_detection_yunet_2023mar.onnx
-```
+See [`weights/README.md`](weights/README.md) for the expected model input/output shapes.
 
 ### 3. Run
 
+All scripts are run as modules from the repository root:
+
 ```bash
-python real_time_facedetector.py
+python -m gaze_monitoring.inference.single_image_pytorch
+python -m gaze_monitoring.inference.realtime_pytorch
+python -m gaze_monitoring.inference.manual_roi_pytorch
+python -m gaze_monitoring.inference.video_pytorch --video path/to/input.mp4
 ```
 
 If the wrong webcam opens, set the camera index before running:
 
 ```powershell
 $env:GAZE_CAMERA_INDEX="1"
-python real_time_facedetector.py
+python -m gaze_monitoring.inference.realtime_pytorch
 ```
 
-Controls:
+Controls (webcam demo):
 
 - `C`: calibrate while looking straight ahead
 - `R`: reset warning count
 - `Q`: quit
 
-For a simple center-ROI demo:
+### 4. ONNX export and validation tools
 
 ```bash
-python realtime_manual_roi.py
+python -m gaze_monitoring.tools.export_gaze_onnx
+python -m gaze_monitoring.tools.compare_pytorch_onnx
 ```
+
+Both require a local checkpoint at `weights/model_epoch_100.pth`; the comparison tool additionally requires a local test image (see the script for the expected path) since no private images are distributed with this repository.
 
 ## Attention-state logic
 
@@ -129,15 +155,20 @@ These values are demonstration settings, not validated automotive safety require
 
 ```text
 .
-├── real_time_facedetector.py  # Main driver-monitoring demo
-├── realtime_manual_roi.py     # Minimal center-ROI webcam demo
-├── test.py                    # Single-image inference example
-├── model.py                   # ResNet gaze model factory
-├── models/                    # YuNet face detector
-└── img/                       # README/demo images
+├── model.py                     # ResNet gaze model factory
+├── models/                      # Public YuNet face detector
+├── weights/                     # Local-only gaze model files (not included)
+├── assets/                      # README/demo images and videos
+├── gaze_monitoring/
+│   ├── inference/                # Single-image, webcam, manual-ROI, video inference
+│   ├── tools/                    # ONNX export and PyTorch/ONNX comparison
+│   └── utils/                    # Shared checkpoint/detection/preprocessing/monitoring/drawing code
+├── cpp/                          # Planned C++17 port (placeholder)
+├── docker/                       # Planned Docker deployment (placeholder)
+└── outputs/                      # Local run outputs (git-ignored)
 ```
 
-> `model_epoch_100.pth` is intentionally excluded from Git and is required only for local gaze inference.
+> Trained gaze weights and exported ONNX models are intentionally excluded from Git and are required only for local inference — see [`weights/README.md`](weights/README.md).
 
 ## Technical notes
 
@@ -158,9 +189,10 @@ These values are demonstration settings, not validated automotive safety require
 ## Roadmap
 
 - [ ] Publish evaluation protocol and cross-domain results after paper review
-- [ ] Add configuration file and command-line options
-- [ ] Export the gaze model to ONNX
-- [ ] Add recorded-video inference and structured event logging
+- [ ] Add configuration file and command-line options for the webcam demo
+- [ ] ONNX Runtime single-image and real-time inference
+- [ ] Docker (CPU) deployment
+- [ ] C++17 / CMake port
 - [ ] Benchmark CPU/GPU latency across devices
 
 ## Citation

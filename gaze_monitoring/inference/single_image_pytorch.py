@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 
 import cv2
 import numpy as np
@@ -9,7 +8,10 @@ import torch
 from torchvision import transforms
 
 from model import build_base_model
+from gaze_monitoring.utils.checkpoint import load_checkpoint
 
+
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 IMAGE_SIZE = 224
 
@@ -28,38 +30,6 @@ def build_preprocess() -> transforms.Compose:
             ),
         ]
     )
-
-
-def load_state_dict(
-    weight_path: Path,
-    device: torch.device,
-) -> dict[str, Any]:
-    checkpoint = torch.load(
-        weight_path,
-        map_location=device,
-        weights_only=True,
-    )
-
-    state_dict = checkpoint
-
-    for key in ("state_dict", "model_state_dict", "model"):
-        if (
-            isinstance(checkpoint, dict)
-            and key in checkpoint
-            and isinstance(checkpoint[key], dict)
-        ):
-            state_dict = checkpoint[key]
-            break
-
-    cleaned_state_dict = {}
-
-    for key, value in state_dict.items():
-        if key.startswith("module."):
-            key = key[len("module.") :]
-
-        cleaned_state_dict[key] = value
-
-    return cleaned_state_dict
 
 
 def draw_gaze_arrow(
@@ -136,10 +106,9 @@ def draw_gaze_arrow(
 
 
 def main() -> None:
-    base_dir = Path(__file__).resolve().parent
-    image_path = base_dir / "img" / "test_img.jpg"
-    weight_path = base_dir / "model_epoch_100.pth"
-    output_path = base_dir / "outputs" / "gaze_result.jpg"
+    image_path = BASE_DIR / "assets" / "images" / "test_img.jpg"
+    weight_path = BASE_DIR / "weights" / "model_epoch_100.pth"
+    output_path = BASE_DIR / "outputs" / "gaze_result.jpg"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not image_path.is_file():
@@ -169,7 +138,7 @@ def main() -> None:
         pretrained=False,
     )
 
-    state_dict = load_state_dict(
+    state_dict = load_checkpoint(
         weight_path=weight_path,
         device=device,
     )

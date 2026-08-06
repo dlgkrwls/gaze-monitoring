@@ -17,10 +17,6 @@ env/
 .DS_Store
 Thumbs.db
 
-# Runtime outputs
-outputs/
-*.log
-
 # Local configuration and secrets
 .env
 .env.*
@@ -35,3 +31,41 @@ datasets/
 checkpoints/
 runs/
 wandb/
+
+# Generated / research-only files not intended for publication
+*.npy
+*.npz
+*.csv
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.log
+
+# ONNX models are private by default; the public YuNet detector is the
+# one tracked exception.
+*.onnx
+!models/face_detection_yunet_2023mar.onnx
+
+# Runtime outputs
+outputs/*
+output/
+result_monitoring*/
+!outputs/.gitkeep
+
+# Local weight/model files (users provide their own; see weights/README.md)
+weights/*
+!weights/.gitkeep
+!weights/README.md
+
+# Portfolio image/video placeholders: private by default, public demo
+# assets are explicitly re-included below.
+assets/images/*
+assets/videos/*
+!assets/images/.gitkeep
+!assets/images/gaze_result.jpg
+!assets/images/test_img.jpg
+!assets/videos/.gitkeep
+
+# Private/local scratch data and generated artifacts, never published
+local_artifacts/
