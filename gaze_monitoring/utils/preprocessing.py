@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import torch
 from pathlib import Path
+from typing import Optional
 IMAGE_SIZE = 224
 IMAGENET_MEAN = np.array(
     [0.485, 0.456, 0.406],
@@ -71,33 +72,24 @@ def preprocess_face(
 
 
 def preprocess_numpy(
-    image_path: Path,
+    image_path: Optional[Path] = None,
+    face_bgr: Optional[np.ndarray] = None,
 ) -> np.ndarray:
-    """
-    배포 후보 OpenCV + NumPy 전처리.
 
-    OpenCV BGR
-    -> Resize
-    -> RGB
-    -> float32
-    -> 0~1 scaling
-    -> ImageNet Normalize
-    -> HWC to CHW
-    -> batch dimension
+    if image_path is not None:
+        image = cv2.imread(str(image_path))
 
-    반환:
-        shape: (1, 3, 224, 224)
-        dtype: float32
-    """
+        if image is None:
+            raise RuntimeError(
+                f"OpenCV로 이미지를 읽지 못했습니다: {image_path}"
+            )
 
-    image = cv2.imread(
-        str(image_path)
-    )
+    elif face_bgr is not None:
+        image = face_bgr
 
-    if image is None:
-        raise RuntimeError(
-            f"OpenCV로 이미지를 읽지 못했습니다: "
-            f"{image_path}"
+    else:
+        raise ValueError(
+            "image_path 또는 face_bgr 중 하나는 입력해야 합니다."
         )
 
     image = cv2.resize(
@@ -111,11 +103,7 @@ def preprocess_numpy(
         cv2.COLOR_BGR2RGB,
     )
 
-    image = image.astype(
-        np.float32
-    )
-
-    image = image / 255.0
+    image = image.astype(np.float32) / 255.0
 
     image = (
         image - IMAGENET_MEAN
@@ -131,7 +119,6 @@ def preprocess_numpy(
         axis=0,
     )
 
-    # C/C++ 포팅 시에도 연속 메모리 형태가 중요함
     image = np.ascontiguousarray(
         image,
         dtype=np.float32,

@@ -2,16 +2,13 @@ from pathlib import Path
 import os
 import sys
 import time
-
+import onnxruntime as ort
 # Support both `python -m ...` and direct file execution.
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import cv2
-import torch
 
-from gaze_monitoring.model import build_base_model
-from gaze_monitoring.utils.checkpoint import load_checkpoint
 from gaze_monitoring.utils.face_detection import (
     build_yunet_detector,
     select_driver_face,
@@ -19,7 +16,7 @@ from gaze_monitoring.utils.face_detection import (
     smooth_bbox,
     make_square_face_crop,
 )
-from gaze_monitoring.utils.preprocessing import preprocess_face
+from gaze_monitoring.utils.preprocessing import preprocess_face ,preprocess_numpy
 from gaze_monitoring.utils.visualization import draw_gaze_arrow
 from gaze_monitoring.utils.monitoring import (
     DriverMonitor,
@@ -33,7 +30,7 @@ from gaze_monitoring.utils.monitoring import (
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-GAZE_WEIGHT_PATH = BASE_DIR / "weights" / "model_epoch_100.pth"
+GAZE_WEIGHT_PATH = BASE_DIR / "weights" / "gaze_model.onnx"
 
 YUNET_MODEL_PATH = Path(
     BASE_DIR / "models/face_detection_yunet_2023mar.onnx"
@@ -136,43 +133,21 @@ def main() -> None:
     # Device
     # --------------------------------------------------------
 
-    device = torch.device(
-        "cuda"
-        if torch.cuda.is_available()
-        else "cpu"
-    )
+   
 
     print("Python-compatible code: 3.8+")
     print("OpenCV:", cv2.__version__)
-    print("Device:", device)
     print("Gaze weight:", GAZE_WEIGHT_PATH)
     print("YuNet model:", YUNET_MODEL_PATH)
 
-    if device.type == "cuda":
-        torch.backends.cudnn.benchmark = True
 
     # --------------------------------------------------------
     # Gaze model
     # --------------------------------------------------------
-
-    gaze_model = build_base_model(
-        backbone="resnet18",
-        pretrained=False,
-    )
-
-    state_dict = load_checkpoint(
-        weight_path=GAZE_WEIGHT_PATH,
-        device=device,
-    )
-
-    gaze_model.load_state_dict(
-        state_dict,
-        strict=True,
-    )
-
-    gaze_model = gaze_model.to(device)
-    gaze_model.eval()
-
+    model = ort.InferenceSession(str(GAZE_WEIGHT_PATH),providers=['CPUExecutionProvider'])
+    input_name = model.get_inputs()[0].name
+    output_name = model.get_outputs()[0].name
+  
     # --------------------------------------------------------
     # Webcam
     # --------------------------------------------------------
@@ -392,38 +367,20 @@ def main() -> None:
                     )
                 )
 
-                input_tensor = preprocess_face(
-                    face_bgr=face_crop,
-                    device=device,
-                )
+                input_tensor = preprocess_numpy(image_path=None, face_bgr=face_crop)
 
-                if device.type == "cuda":
-                    torch.cuda.synchronize()
+                
 
                 gaze_start = (
                     time.perf_counter()
                 )
 
-                with torch.inference_mode():
-                    prediction = gaze_model(
-                        input_tensor
-                    )
-
-                if device.type == "cuda":
-                    torch.cuda.synchronize()
+                prediction = model.run([output_name], {input_name: input_tensor})[0][0]
 
                 gaze_ms = (
                     time.perf_counter()
                     - gaze_start
                 ) * 1000.0
-
-                prediction = (
-                    prediction
-                    .squeeze(0)
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
 
                 if prediction.size != 2:
                     raise RuntimeError(
