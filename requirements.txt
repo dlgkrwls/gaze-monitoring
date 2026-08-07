@@ -5,4 +5,3 @@ torch>=2.0
 torchvision>=0.15
 onnx>=1.15
 onnxruntime>=1.17
-onnxscript>=0.7

@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import torch
 
-from model import build_base_model
+from gaze_monitoring.model import build_base_model
 from gaze_monitoring.utils.checkpoint import load_checkpoint
 from gaze_monitoring.utils.face_detection import (
     build_yunet_detector,

@@ -1,8 +1,8 @@
-from pathlib import Path
+ㄴfrom pathlib import Path
 
 import torch
 
-from model import build_base_model
+from gaze_monitoring.model import build_base_model
 from gaze_monitoring.utils.checkpoint import load_checkpoint
 
 

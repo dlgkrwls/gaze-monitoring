@@ -1,4 +1,5 @@
 from pathlib import Path
+import sys
 
 import numpy as np
 import onnxruntime as ort
@@ -6,13 +7,18 @@ import torch
 
 import cv2
 
-from model import build_base_model
+from gaze_monitoring.model import build_base_model
 from gaze_monitoring.utils.checkpoint import load_checkpoint
 from gaze_monitoring.utils.preprocessing import preprocess_face
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-#  모델 파일 경로
+
+if __package__ in (None, ""):
+    sys.path.insert(
+        0,
+        str(Path(__file__).resolve().parents[2])
+    )
 
 
 GAZE_WEIGHT_PATH = BASE_DIR / "weights" / "model_epoch_100.pth"

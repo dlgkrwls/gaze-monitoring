@@ -111,6 +111,7 @@ All scripts are run as modules from the repository root:
 
 ```bash
 python -m gaze_monitoring.inference.single_image_pytorch
+python -m gaze_monitoring.inference.single_image_onnx --no-display
 python -m gaze_monitoring.inference.realtime_pytorch
 python -m gaze_monitoring.inference.manual_roi_pytorch
 python -m gaze_monitoring.inference.video_pytorch --video path/to/input.mp4
@@ -135,6 +136,9 @@ Controls (webcam demo):
 python -m gaze_monitoring.tools.export_gaze_onnx
 python -m gaze_monitoring.tools.compare_pytorch_onnx
 ```
+
+Run entry points from the repository root. Direct file execution is also supported,
+for example `python gaze_monitoring/inference/single_image_pytorch.py --no-display`.
 
 Both require a local checkpoint at `weights/model_epoch_100.pth`; the comparison tool additionally requires a local test image (see the script for the expected path) since no private images are distributed with this repository.
 

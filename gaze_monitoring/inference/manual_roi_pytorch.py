@@ -9,7 +9,7 @@ from PIL import Image
 import torch
 from torchvision import transforms
 
-from model import build_base_model
+from gaze_monitoring.model import build_base_model
 from gaze_monitoring.utils.checkpoint import load_checkpoint
 
 

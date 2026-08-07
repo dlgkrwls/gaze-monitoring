@@ -2,40 +2,18 @@ from pathlib import Path
 import argparse
 import sys
 
-# Support both `python -m ...` and direct file execution.
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import cv2
 import numpy as np
-from PIL import Image
-
-import torch
-from torchvision import transforms
-
-from gaze_monitoring.model import build_base_model
-from gaze_monitoring.utils.checkpoint import load_checkpoint
+from gaze_monitoring.utils.preprocessing import preprocess_numpy
+import onnxruntime as ort
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 IMAGE_SIZE = 224
-
-IMAGENET_MEAN = [0.485, 0.456, 0.406]
-IMAGENET_STD = [0.229, 0.224, 0.225]
-
-
-def build_preprocess() -> transforms.Compose:
-    return transforms.Compose(
-        [
-            transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=IMAGENET_MEAN,
-                std=IMAGENET_STD,
-            ),
-        ]
-    )
 
 
 def draw_gaze_arrow(
@@ -124,8 +102,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     image_path = BASE_DIR / "assets" / "images" / "test_img.jpg"
-    weight_path = BASE_DIR / "weights" / "model_epoch_100.pth"
-    output_path = BASE_DIR / "outputs" / "gaze_result_pytorch_CPU.jpg"
+    weight_path = BASE_DIR / "weights" / "gaze_model.onnx"
+    output_path = BASE_DIR / "outputs" / "gaze_result_onnx.jpg"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not image_path.is_file():
@@ -134,41 +112,20 @@ def main() -> None:
     if not weight_path.is_file():
         raise FileNotFoundError(f"가중치가 없습니다: {weight_path}")
 
-    device = torch.device(
-        "cuda" if torch.cuda.is_available() else "cpu"
-    )
 
-    print(f"Device: {device}")
     print(f"Image: {image_path}")
     print(f"Weight: {weight_path}")
 
-    preprocess = build_preprocess()
+    input_tensor = preprocess_numpy(image_path)
 
-    # 모델 입력용 RGB PIL 이미지
-    pil_image = Image.open(image_path).convert("RGB")
 
-    input_tensor = preprocess(pil_image)
-    input_tensor = input_tensor.unsqueeze(0).to(device)
+    model = ort.InferenceSession(str(weight_path),providers=['CPUExecutionProvider'])
+    input_name = model.get_inputs()[0].name
+    output_name = model.get_outputs()[0].name
 
-    model = build_base_model(
-        backbone="resnet18",
-        pretrained=False,
-    )
-
-    state_dict = load_checkpoint(
-        weight_path=weight_path,
-        device=device,
-    )
-
-    model.load_state_dict(state_dict, strict=True)
-    model = model.to(device)
-    model.eval()
-
-    with torch.inference_mode():
-        prediction = model(input_tensor)
-
-    prediction = prediction.squeeze(0).cpu().numpy()
-
+    prediction = model.run([output_name], {input_name: input_tensor})[0][0]
+    print("Prediction:", prediction)
+    print("Prediction shape:", prediction.shape)
     yaw = float(prediction[0])
     pitch = float(prediction[1])
 

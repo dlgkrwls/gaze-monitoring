@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 import torch
-
+from pathlib import Path
+IMAGE_SIZE = 224
 IMAGENET_MEAN = np.array(
     [0.485, 0.456, 0.406],
     dtype=np.float32,
@@ -66,3 +67,74 @@ def preprocess_face(
         dtype=torch.float32,
         non_blocking=True,
     )
+
+
+
+def preprocess_numpy(
+    image_path: Path,
+) -> np.ndarray:
+    """
+    배포 후보 OpenCV + NumPy 전처리.
+
+    OpenCV BGR
+    -> Resize
+    -> RGB
+    -> float32
+    -> 0~1 scaling
+    -> ImageNet Normalize
+    -> HWC to CHW
+    -> batch dimension
+
+    반환:
+        shape: (1, 3, 224, 224)
+        dtype: float32
+    """
+
+    image = cv2.imread(
+        str(image_path)
+    )
+
+    if image is None:
+        raise RuntimeError(
+            f"OpenCV로 이미지를 읽지 못했습니다: "
+            f"{image_path}"
+        )
+
+    image = cv2.resize(
+        image,
+        (IMAGE_SIZE, IMAGE_SIZE),
+        interpolation=cv2.INTER_LINEAR,
+    )
+
+    image = cv2.cvtColor(
+        image,
+        cv2.COLOR_BGR2RGB,
+    )
+
+    image = image.astype(
+        np.float32
+    )
+
+    image = image / 255.0
+
+    image = (
+        image - IMAGENET_MEAN
+    ) / IMAGENET_STD
+
+    image = np.transpose(
+        image,
+        (2, 0, 1),
+    )
+
+    image = np.expand_dims(
+        image,
+        axis=0,
+    )
+
+    # C/C++ 포팅 시에도 연속 메모리 형태가 중요함
+    image = np.ascontiguousarray(
+        image,
+        dtype=np.float32,
+    )
+
+    return image
