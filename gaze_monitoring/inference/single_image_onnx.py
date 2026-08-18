@@ -7,7 +7,7 @@ if __package__ in (None, ""):
 
 import cv2
 import numpy as np
-from gaze_monitoring.utils.preprocessing import preprocess_numpy
+from gaze_monitoring.utils.preprocessing_numpy import preprocess_numpy
 import onnxruntime as ort
 
 

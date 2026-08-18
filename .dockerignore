@@ -1,0 +1,10 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+
+local_artifacts/
+outputs/
+
+weights/
+*.pth
