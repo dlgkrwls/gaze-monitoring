@@ -16,7 +16,7 @@ from gaze_monitoring.utils.face_detection import (
     smooth_bbox,
     make_square_face_crop,
 )
-from gaze_monitoring.utils.preprocessing import preprocess_face ,preprocess_numpy
+from gaze_monitoring.utils.preprocessing_numpy import preprocess_numpy
 from gaze_monitoring.utils.visualization import draw_gaze_arrow
 from gaze_monitoring.utils.monitoring import (
     DriverMonitor,
