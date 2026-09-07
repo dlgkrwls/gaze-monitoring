@@ -69,3 +69,7 @@ assets/videos/*
 
 # Private/local scratch data and generated artifacts, never published
 local_artifacts/
+
+# C++ (CMake) build output
+build/
+cpp/build/

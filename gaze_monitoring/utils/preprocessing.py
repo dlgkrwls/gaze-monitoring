@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-import torch
+# import torch
 from pathlib import Path
 from typing import Optional
 IMAGE_SIZE = 224
